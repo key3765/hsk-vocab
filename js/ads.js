@@ -15,8 +15,8 @@ window.HSK = window.HSK || {};
   "use strict";
 
   var CONFIG = {
-    enabled: false,
-    client: "ca-pub-0000000000000000",
+    enabled: false,                       // 3つの広告ユニット番号が揃ったら true にする
+    client: "ca-pub-8997874792161168",
     slots: {
       home:   "0000000000",   // ホーム下部
       list:   "0000000000",   // 一覧の末尾
