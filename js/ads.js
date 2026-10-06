@@ -15,12 +15,12 @@ window.HSK = window.HSK || {};
   "use strict";
 
   var CONFIG = {
-    enabled: false,                       // 3つの広告ユニット番号が揃ったら true にする
+    enabled: true,
     client: "ca-pub-8997874792161168",
     slots: {
-      home:   "0000000000",   // ホーム下部
-      list:   "0000000000",   // 一覧の末尾
-      result: "0000000000"    // 小テストの結果
+      home:   "3795577603",   // ホーム下部 (square_1)
+      list:   "1322291659",   // 一覧の末尾 (square_3)
+      result: "1723500929"    // 小テストの結果
     }
   };
 
