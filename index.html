@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HSK 単語帳</title>
+<meta name="description" content="HSK1・2の約300語を、間隔反復と小テストで覚える単語帳。1日数分から続けられます。">
+<meta name="theme-color" content="#F1F4F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1513" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HSK単語帳">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Noto+Serif+SC:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="css/app.css">
+
+<!-- 広告: AdSense を使うときは下の1行のコメントを外し、client を自分の ca-pub-... に変える。
+     あわせて js/ads.js の CONFIG も書き換える（手順は README.md）。
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0000000000000000" crossorigin="anonymous"></script>
+-->
+</head>
+<body>
+
+<div class="app">
+  <header class="topbar" id="topbar"></header>
+  <main class="screen" id="screen">
+    <p class="empty">読み込み中…</p>
+  </main>
+  <nav class="tabbar" id="tabbar" aria-label="画面の切り替え"></nav>
+</div>
+
+<div id="sheet" hidden></div>
+
+<script src="data/hsk1.js"></script>
+<script src="data/hsk2.js"></script>
+<script src="js/store.js"></script>
+<script src="js/srs.js"></script>
+<script src="js/ads.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+/* オフラインでも開けるようにする。file:// で開いたときは何もしない。 */
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () { /* 失敗しても本体は動く */ });
+  });
+}
+</script>
+
+</body>
+</html>

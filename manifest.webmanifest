@@ -1,0 +1,19 @@
+{
+  "name": "HSK 単語帳 — HSK1・2",
+  "short_name": "HSK単語帳",
+  "description": "HSK1・2の約300語を、間隔反復と小テストで覚える単語帳。",
+  "lang": "ja",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F1F4F0",
+  "theme_color": "#15655A",
+  "categories": ["education"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

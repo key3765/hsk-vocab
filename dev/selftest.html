@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>selftest</title>
+<link rel="stylesheet" href="../css/app.css"></head><body>
+<div class="app">
+  <header class="topbar" id="topbar"></header>
+  <main class="screen" id="screen"><p class="empty">読み込み中…</p></main>
+  <nav class="tabbar" id="tabbar"></nav>
+</div>
+<div id="sheet" hidden></div>
+<pre id="out">pending</pre>
+<script src="../data/hsk1.js"></script>
+<script src="../data/hsk2.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/srs.js"></script>
+<script src="../js/ads.js"></script>
+<script src="../js/app.js"></script>
+<script>
+var L = [];
+function ok(name, cond, extra) { L.push((cond ? "PASS " : "FAIL ") + name + (extra !== undefined ? "  [" + extra + "]" : "")); }
+function q(s) { return document.querySelector(s); }
+function qa(s) { return document.querySelectorAll(s); }
+function click(s) { var e = q(s); if (!e) { L.push("FAIL click-missing " + s); return false; } e.click(); return true; }
+
+window.addEventListener("load", function () { setTimeout(run, 60); });
+
+function run() {
+  try {
+    var S = window.HSK.store, R = window.HSK.srs, A = window.HSK.app;
+
+    /* --- データ --- */
+    var W = A.words();
+    ok("words loaded 299", W.length === 299, W.length);
+    ok("hsk1 = 150", W.filter(function (x) { return x.level === 1; }).length === 150);
+    ok("hsk2 = 149", W.filter(function (x) { return x.level === 2; }).length === 149);
+    var ids = {}, dup = 0;
+    W.forEach(function (x) { if (ids[x.id]) dup++; ids[x.id] = 1; });
+    ok("ids unique", dup === 0, "dup=" + dup);
+    var missing = W.filter(function (x) { return !x.w || !x.p || !x.j || !x.pos || !x.ez || !x.ep || !x.ej; });
+    ok("no empty fields", missing.length === 0, missing.length ? missing[0].id : "");
+
+    /* --- 日付と間隔の計算 --- */
+    ok("intervalFor(0)=1", R.intervalFor(0) === 1);
+    ok("intervalFor(3)=8", R.intervalFor(3) === 8);
+    ok("intervalFor(99) caps", R.intervalFor(99) === 60);
+    ok("daysBetween", S.daysBetween("2026-02-28", "2026-03-01") === 1);
+    ok("shiftDays over month", S.shiftDays("2026-01-31", 1) === "2026-02-01");
+    ok("shiftDays back", S.shiftDays("2026-03-01", -1) === "2026-02-28");
+
+    /* --- ホーム --- */
+    ok("home ring", !!q(".ring__num"));
+    ok("home seal", !!q(".seal"));
+    ok("tabs = 3", qa("#tabbar button").length === 3);
+    ok("ad slot on home", !!q('[data-ad="home"]'));
+
+    /* --- 学習を一周する --- */
+    var goal = S.settings.goal;
+    click('[data-go="study-normal"]');
+    ok("study card shown", !!q(".card"));
+    ok("hint before reveal", !!q(".card__hint"));
+    click('[data-act="reveal"]');
+    ok("grade buttons after reveal", qa(".grade button").length === 3);
+    ok("example shown", !!q(".example__zh"));
+
+    /* 1枚目は「わからない」で後ろに回る */
+    var first = q(".card__hanzi").textContent;
+    click('[data-grade="again"]');
+    var barText = q(".study__bar span").textContent;
+    ok("again keeps count at 0", barText.indexOf("0 /") === 0, barText);
+    ok("again moved card back", q(".card__hanzi").textContent !== first || goal === 1);
+
+    var guard = 0;
+    while (q(".grade, .card") && guard++ < 400) {
+      if (q(".grade")) { q('[data-grade="good"]').click(); }
+      else if (q('[data-act="reveal"]')) { q('[data-act="reveal"]').click(); }
+      else break;
+    }
+    ok("finish screen", !!q(".finish"), "iterations=" + guard);
+    ok("studied logged = goal", S.countStudied(S.today()) === goal, S.countStudied(S.today()) + "/" + goal);
+    ok("streak started", S.liveStreak(S.today()) === 1, S.liveStreak(S.today()));
+    var graded = Object.keys(S.state.cards).length;
+    ok("cards recorded", graded === goal, graded);
+
+    /* --- 小テスト --- */
+    click('[data-go="quiz"]');
+    ok("quiz prompt", !!q(".quiz__prompt"));
+    ok("4 choices", qa(".choice").length === 4, qa(".choice").length);
+    var qguard = 0;
+    while (!q(".score-big") && qguard++ < 60) {
+      if (q(".choice:not([disabled])")) q(".choice:not([disabled])").click();
+      else if (q('[data-act="quiz-next"]')) q('[data-act="quiz-next"]').click();
+      else break;
+    }
+    ok("quiz result", !!q(".score-big"), "steps=" + qguard);
+    ok("quiz logged 10", S.state.log[S.today()].quiz === 10, S.state.log[S.today()].quiz);
+    ok("ad slot on result", !!q('[data-ad="result"]'));
+
+    /* --- 一覧 --- */
+    click('[data-tab="list"]');
+    var rows = qa(".word-row").length;
+    ok("list rows = 299", rows === 299, rows);
+    ok("badges rendered", qa(".badge").length === rows, qa(".badge").length);
+    var inp = q("#list-search");
+    inp.value = "苹果";
+    inp.dispatchEvent(new Event("input", { bubbles: true }));
+    ok("search narrows", qa(".word-row").length === 1, qa(".word-row").length);
+    inp.value = "";
+    inp.dispatchEvent(new Event("input", { bubbles: true }));
+    ok("search cleared", qa(".word-row").length === 299, qa(".word-row").length);
+    click('[data-filter="mature"]');
+    ok("filter mature renders", !!(q(".word-list") || q(".empty")));
+    click('[data-filter="all"]');
+
+    /* 語の詳細シート */
+    q(".word-row").click();
+    ok("detail sheet opens", !!q(".sheet .detail"));
+    q(".sheet").click();                       /* シート内の余白を押しても閉じない */
+    ok("inner click keeps sheet", !!q(".sheet .detail"));
+    click('[data-act="mark-mature"]');
+    ok("sheet closed after action", !q(".sheet"));
+
+    /* --- 記録 --- */
+    click('[data-tab="stats"]');
+    ok("7 bars", qa(".bars__col").length === 7, qa(".bars__col").length);
+    ok("kpi tiles", qa(".kpi").length >= 4, qa(".kpi").length);
+    ok("per-level meters", qa(".meter").length >= 2, qa(".meter").length);
+
+    /* --- 設定 --- */
+    click('[data-act="settings"]');
+    ok("settings sheet", !!q(".sheet"));
+    var g0 = S.settings.goal;
+    click('[data-act="goal+"]');
+    ok("goal +5", S.settings.goal === g0 + 5, S.settings.goal);
+    click('[data-set="dir"][data-val="ja2zh"]');
+    ok("dir switched", S.settings.dir === "ja2zh", S.settings.dir);
+    click('[data-set="showPinyin"][data-val="true"]');
+    ok("showPinyin bool true", S.settings.showPinyin === true, typeof S.settings.showPinyin);
+    click('[data-set="theme"][data-val="dark"]');
+    ok("theme stamped", document.documentElement.getAttribute("data-theme") === "dark");
+    click('[data-level="2"]');
+    ok("level 2 removed", S.settings.levels.join() === "1", S.settings.levels.join());
+    click('[data-level="1"]');
+    ok("last level kept", S.settings.levels.join() === "1", S.settings.levels.join());
+    click('[data-level="2"]');
+    ok("level 2 back", S.settings.levels.join() === "1,2", S.settings.levels.join());
+    click('[data-act="sheet-close"]');
+    ok("settings closed", !q(".sheet"));
+
+    /* --- 保存 --- */
+    S.saveNow();
+    var raw = localStorage.getItem("hsk-vocab:v1");
+    var parsed = raw ? JSON.parse(raw) : null;
+    ok("persisted to localStorage", !!(parsed && parsed.cards && Object.keys(parsed.cards).length > 0));
+
+    /* 片方の級だけでも小テストが組めるか */
+    S.settings.levels = [1];
+    click('[data-tab="home"]');
+    click('[data-go="quiz"]');
+    ok("quiz works with one level", qa(".choice").length === 4, qa(".choice").length);
+  } catch (e) {
+    L.push("FAIL exception: " + (e && e.message) + " @ " + (e && e.stack ? e.stack.split("\n")[1] : ""));
+  }
+  var bad = L.filter(function (s) { return s.indexOf("FAIL") === 0; });
+  document.getElementById("out").textContent =
+    "RESULT " + (L.length - bad.length) + "/" + L.length + " passed\n" + L.join("\n");
+}
+</script></body></html>
