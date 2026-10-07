@@ -14,6 +14,7 @@
 <script src="../js/store.js"></script>
 <script src="../js/srs.js"></script>
 <script src="../js/ads.js"></script>
+<script src="../js/tts.js"></script>
 <script src="../js/app.js"></script>
 <script>
 var L = [];
@@ -60,9 +61,23 @@ function run() {
     click('[data-go="study-normal"]');
     ok("study card shown", !!q(".card"));
     ok("hint before reveal", !!q(".card__hint"));
+
+    var A2 = window.HSK.tts;
+    ok("tts module loaded", !!A2 && typeof A2.speak === "function");
+    if (A2 && A2.supported()) {
+      ok("speak button on card", !!q(".speak-btn--card"));
+      click(".speak-btn--card");
+      ok("speak click did not throw", true);
+    } else {
+      ok("speak button hidden when unsupported", !q(".speak-btn--card"));
+    }
+
     click('[data-act="reveal"]');
     ok("grade buttons after reveal", qa(".grade button").length === 3);
     ok("example shown", !!q(".example__zh"));
+    if (A2 && A2.supported()) {
+      ok("speak button on example", !!q(".example__zh .speak-btn--inline"));
+    }
 
     /* 1枚目は「わからない」で後ろに回る */
     var first = q(".card__hanzi").textContent;
@@ -87,6 +102,9 @@ function run() {
     click('[data-go="quiz"]');
     ok("quiz prompt", !!q(".quiz__prompt"));
     ok("4 choices", qa(".choice").length === 4, qa(".choice").length);
+    if (A2 && A2.supported()) {
+      ok("speak button on quiz prompt (zh2ja)", !!q(".q-han .speak-btn--inline"));
+    }
     var qguard = 0;
     while (!q(".score-big") && qguard++ < 60) {
       if (q(".choice:not([disabled])")) q(".choice:not([disabled])").click();
@@ -135,6 +153,10 @@ function run() {
     /* 語の詳細シート */
     q(".word-row").click();
     ok("detail sheet opens", !!q(".sheet .detail"));
+    if (A2 && A2.supported()) {
+      ok("speak button on detail headword", !!q(".sheet .detail .speak-btn--card"));
+      ok("speak button on detail example", !!q(".sheet .detail .example__zh .speak-btn--inline"));
+    }
     q(".sheet").click();                       /* シート内の余白を押しても閉じない */
     ok("inner click keeps sheet", !!q(".sheet .detail"));
     click('[data-act="mark-mature"]');

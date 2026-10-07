@@ -6,7 +6,7 @@ window.HSK = window.HSK || {};
 (function (ns) {
   "use strict";
 
-  var store = ns.store, srs = ns.srs, ads = ns.ads;
+  var store = ns.store, srs = ns.srs, ads = ns.ads, tts = ns.tts;
 
   /* -------------------------------------------------- 語彙 */
   var WORDS = [];
@@ -90,8 +90,16 @@ window.HSK = window.HSK || {};
     gear:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
     back:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
     search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
-    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    speak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>'
   };
+
+  /* 発音を聴くボタン。tts.js が未対応の環境（古いブラウザ等）では出さない。 */
+  function speakBtnHtml(text, extraClass) {
+    if (!tts || !tts.supported()) return "";
+    return '<button class="speak-btn' + (extraClass ? " " + extraClass : "") + '" ' +
+      'data-act="speak" data-text="' + esc(text) + '" aria-label="発音を聴く">' + ICON.speak + '</button>';
+  }
 
   /* -------------------------------------------------- 画面の状態 */
   var el = {};
@@ -280,6 +288,7 @@ window.HSK = window.HSK || {};
 
     body += '<div class="card" data-level="' + w.level + '" data-act="reveal" role="button" tabindex="0" ' +
       'aria-label="タップして答えを表示">';
+    body += speakBtnHtml(w.w, "speak-btn--card");
     body += '<p class="' + hanziClass(w.w) + '">' + esc(w.w) + '</p>';
 
     if (session.revealed) {
@@ -288,7 +297,7 @@ window.HSK = window.HSK || {};
         '<span class="pos-chip">' + esc(w.pos) + '</span>' +
         '<p class="card__ja">' + esc(w.j) + '</p>' +
         '<div class="example">' +
-          '<span class="example__zh">' + esc(w.ez) + '</span>' +
+          '<span class="example__zh">' + esc(w.ez) + speakBtnHtml(w.ez, "speak-btn--inline") + '</span>' +
           '<span class="example__py">' + esc(w.ep) + '</span>' +
           '<span class="example__ja">' + esc(w.ej) + '</span>' +
         '</div>' +
@@ -419,7 +428,7 @@ window.HSK = window.HSK || {};
     var answered = q.picked !== -1;
 
     var promptHtml = q.dir === "zh2ja"
-      ? '<div class="q-han">' + esc(w.w) + '</div>' +
+      ? '<div class="q-han">' + esc(w.w) + speakBtnHtml(w.w, "speak-btn--inline") + '</div>' +
         (store.settings.showPinyin || answered ? '<div class="card__pinyin">' + esc(w.p) + '</div>' : '') +
         '<div class="q-sub">意味はどれ？</div>'
       : '<div class="q-ja">' + esc(w.j) + '</div>' +
@@ -726,7 +735,11 @@ window.HSK = window.HSK || {};
 
     html += '<hr class="hr">';
     html += '<button class="btn danger btn--block" data-act="reset">学習記録をすべて消す</button>';
-    html += '<p class="foot">HSK 2.0 準拠 ・ 収録 ' + WORDS.length + ' 語。<br>記録は端末内にのみ保存されます。</p>';
+    html += '<p class="foot">HSK 2.0 準拠 ・ 収録 ' + WORDS.length + ' 語。<br>記録は端末内にのみ保存されます。' +
+      (tts && tts.supported()
+        ? '<br>発音を聴くボタンは端末の音声合成を使用します（録音ファイルではありません）。'
+        : '<br>この端末・ブラウザは発音の読み上げに対応していません。') +
+      '</p>';
     return html;
   }
 
@@ -748,12 +761,15 @@ window.HSK = window.HSK || {};
       '<button class="icon-btn" data-act="sheet-close" aria-label="閉じる">' + ICON.close + '</button></div>';
 
     html += '<div class="detail">' +
-      '<p class="' + hanziClass(w.w) + '">' + esc(w.w) + '</p>' +
+      '<div style="position:relative">' +
+        speakBtnHtml(w.w, "speak-btn--card") +
+        '<p class="' + hanziClass(w.w) + '">' + esc(w.w) + '</p>' +
+      '</div>' +
       '<p class="card__pinyin">' + esc(w.p) + '</p>' +
       '<span class="pos-chip">' + esc(w.pos) + ' ・ HSK ' + w.level + '</span>' +
       '<p class="card__ja">' + esc(w.j) + '</p>' +
       '<div class="example">' +
-        '<span class="example__zh">' + esc(w.ez) + '</span>' +
+        '<span class="example__zh">' + esc(w.ez) + speakBtnHtml(w.ez, "speak-btn--inline") + '</span>' +
         '<span class="example__py">' + esc(w.ep) + '</span>' +
         '<span class="example__ja">' + esc(w.ej) + '</span>' +
       '</div>' +
@@ -905,6 +921,11 @@ window.HSK = window.HSK || {};
     if (wordId) { detailId = wordId; openSheet("detail"); return; }
 
     switch (act) {
+      case "speak": {
+        var speakNode = t.closest("[data-text]");
+        if (speakNode && tts) tts.speak(speakNode.getAttribute("data-text"));
+        return;
+      }
       case "reveal":
         if (session && !session.revealed) { session.revealed = true; render(); }
         return;
