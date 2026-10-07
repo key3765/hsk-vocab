@@ -1,7 +1,7 @@
 {
-  "name": "HSK 単語帳 — HSK1・2",
+  "name": "HSK 単語帳 — HSK1〜3",
   "short_name": "HSK単語帳",
-  "description": "HSK1・2の約300語を、間隔反復と小テストで覚える単語帳。",
+  "description": "HSK1〜3の599語を、間隔反復と小テストで覚える単語帳。",
   "lang": "ja",
   "dir": "ltr",
   "start_url": "./index.html",

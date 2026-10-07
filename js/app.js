@@ -10,14 +10,38 @@ window.HSK = window.HSK || {};
 
   /* -------------------------------------------------- 語彙 */
   var WORDS = [];
+  var LEVELS = [];   // データが実在する級番号。収録級を増やすときは buildWords() の一覧に足すだけでよい
 
   function buildWords() {
     var src = window.HSK_DATA || {};
-    [[1, src.hsk1], [2, src.hsk2]].forEach(function (pair) {
+    [[1, src.hsk1], [2, src.hsk2], [3, src.hsk3]].forEach(function (pair) {
       var level = pair[0], list = pair[1] || [];
+      if (!list.length) return;
+      LEVELS.push(level);
+
+      /* 同じ級内で見出し字(w)が重なる語は多音字（同じ漢字で読み・意味が違う語、
+         例: 花 huā「使う」/「花」、只 zhī/zhǐ）。まずピンインを足して区別し、
+         ピンインも同じものが重なる場合だけ連番を足す。重ならない語（大多数）は
+         これまでどおり level:word の id のままなので、既存の学習記録は壊れない。 */
+      var byWord = {}, byWordPinyin = {};
       list.forEach(function (w) {
+        byWord[w.w] = (byWord[w.w] || 0) + 1;
+        var k = w.w + "\u0001" + w.p;
+        byWordPinyin[k] = (byWordPinyin[k] || 0) + 1;
+      });
+      var seq = {};
+      list.forEach(function (w) {
+        var id = level + ":" + w.w;
+        if (byWord[w.w] > 1) {
+          id += ":" + w.p;
+          var k = w.w + "\u0001" + w.p;
+          if (byWordPinyin[k] > 1) {
+            seq[k] = (seq[k] || 0) + 1;
+            id += ":" + seq[k];
+          }
+        }
         WORDS.push({
-          id: level + ":" + w.w,
+          id: id,
           level: level,
           w: w.w, p: w.p, j: w.j, pos: w.pos,
           ez: w.ez, ep: w.ep, ej: w.ej
@@ -194,7 +218,7 @@ window.HSK = window.HSK || {};
   }
 
   function levelChips() {
-    return [1, 2].map(function (lv) {
+    return LEVELS.map(function (lv) {
       var on = store.settings.levels.indexOf(lv) !== -1;
       var n = levelWords(lv).length;
       return '<button class="chip" data-level="' + lv + '" aria-pressed="' + on + '">' +
@@ -611,7 +635,7 @@ window.HSK = window.HSK || {};
     }).join("") + '</div>';
 
     html += '<div class="section-head"><h2 class="h">級ごとの進み</h2></div>';
-    [1, 2].forEach(function (lv) {
+    LEVELS.forEach(function (lv) {
       var lc = srs.counts(levelWords(lv), day());
       var done = Math.round(lc.mature / Math.max(1, lc.total) * 100);
       html += '<section class="breakdown">' +
