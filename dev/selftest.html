@@ -11,6 +11,7 @@
 <script src="../data/hsk1.js"></script>
 <script src="../data/hsk2.js"></script>
 <script src="../data/hsk3.js"></script>
+<script src="../data/hsk4.js"></script>
 <script src="../js/store.js"></script>
 <script src="../js/srs.js"></script>
 <script src="../js/ads.js"></script>
@@ -31,10 +32,11 @@ function run() {
 
     /* --- データ --- */
     var W = A.words();
-    ok("words loaded 599", W.length === 599, W.length);
+    ok("words loaded 1198", W.length === 1198, W.length);
     ok("hsk1 = 150", W.filter(function (x) { return x.level === 1; }).length === 150);
     ok("hsk2 = 149", W.filter(function (x) { return x.level === 2; }).length === 149);
     ok("hsk3 = 300", W.filter(function (x) { return x.level === 3; }).length === 300);
+    ok("hsk4 = 599", W.filter(function (x) { return x.level === 4; }).length === 599);
     var ids = {}, dup = 0;
     W.forEach(function (x) { if (ids[x.id]) dup++; ids[x.id] = 1; });
     ok("ids unique (incl. 花/只 homographs)", dup === 0, "dup=" + dup);
@@ -53,7 +55,7 @@ function run() {
     ok("home ring", !!q(".ring__num"));
     ok("home seal", !!q(".seal"));
     ok("tabs = 3", qa("#tabbar button").length === 3);
-    ok("3 level chips on home", qa(".levels .chip").length === 3, qa(".levels .chip").length);
+    ok("4 level chips on home", qa(".levels .chip").length === 4, qa(".levels .chip").length);
     ok("ad slot on home", !!q('[data-ad="home"]'));
 
     /* --- 学習を一周する --- */
@@ -127,6 +129,16 @@ function run() {
     click('[data-tab="list"]');
     ok("list rows = 599 with HSK3 on", qa(".word-row").length === 599, qa(".word-row").length);
 
+    /* HSK4 も足すと全収録 1198 語になることを確認してから戻す */
+    click('[data-tab="home"]');
+    click('[data-level="4"]');
+    click('[data-tab="list"]');
+    ok("list rows = 1198 with HSK3+4 on", qa(".word-row").length === 1198, qa(".word-row").length);
+    click('[data-tab="home"]');
+    click('[data-level="4"]');
+    click('[data-tab="list"]');
+    ok("list rows back to 599 after HSK4 off", qa(".word-row").length === 599, qa(".word-row").length);
+
     var inp = q("#list-search");
     inp.value = "苹果";
     inp.dispatchEvent(new Event("input", { bubbles: true }));
@@ -166,7 +178,7 @@ function run() {
     click('[data-tab="stats"]');
     ok("7 bars", qa(".bars__col").length === 7, qa(".bars__col").length);
     ok("kpi tiles", qa(".kpi").length >= 4, qa(".kpi").length);
-    ok("per-level meters = 3", qa(".meter").length === 3, qa(".meter").length);
+    ok("per-level meters = 4", qa(".meter").length === 4, qa(".meter").length);
 
     /* --- 設定 --- */
     click('[data-act="settings"]');
@@ -190,6 +202,10 @@ function run() {
     ok("level 3 added", S.settings.levels.join() === "1,2,3", S.settings.levels.join());
     click('[data-level="3"]');
     ok("level 3 removed", S.settings.levels.join() === "1,2", S.settings.levels.join());
+    click('[data-level="4"]');
+    ok("level 4 added", S.settings.levels.join() === "1,2,4", S.settings.levels.join());
+    click('[data-level="4"]');
+    ok("level 4 removed", S.settings.levels.join() === "1,2", S.settings.levels.join());
     click('[data-act="sheet-close"]');
     ok("settings closed", !q(".sheet"));
 

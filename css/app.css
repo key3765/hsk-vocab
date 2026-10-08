@@ -25,7 +25,8 @@
   --good:       #4C7A3C;
   --warn:       #9A7320;
   --crit:       #A63A2B;
-  --tetsu:      #3A5A78;   /* 鉄紺: 3級目以降のカードの目印に使う */
+  --tetsu:      #3A5A78;   /* 鉄紺: 3級目のカードの目印 */
+  --budo:       #6B4984;   /* 葡萄: 4級目のカードの目印 */
 
   --radius:     14px;
   --radius-sm:  9px;
@@ -62,6 +63,7 @@
     --warn:      #D9AE4E;
     --crit:      #E5775F;
     --tetsu:     #7FA8C9;
+    --budo:      #C9A3DE;
 
     --shadow:      0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
     --shadow-lift: 0 2px 4px rgba(0,0,0,.55), 0 18px 40px -16px rgba(0,0,0,.8);
@@ -91,6 +93,7 @@
   --warn:      #D9AE4E;
   --crit:      #E5775F;
   --tetsu:     #7FA8C9;
+  --budo:      #C9A3DE;
 
   --shadow:      0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
   --shadow-lift: 0 2px 4px rgba(0,0,0,.55), 0 18px 40px -16px rgba(0,0,0,.8);
@@ -422,6 +425,7 @@ h2.h {
 }
 .card[data-level="2"]::before { background: var(--warn); }
 .card[data-level="3"]::before { background: var(--tetsu); }
+.card[data-level="4"]::before { background: var(--budo); }
 
 /* 発音を聴くボタン */
 .speak-btn {

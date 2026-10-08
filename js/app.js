@@ -14,7 +14,7 @@ window.HSK = window.HSK || {};
 
   function buildWords() {
     var src = window.HSK_DATA || {};
-    [[1, src.hsk1], [2, src.hsk2], [3, src.hsk3]].forEach(function (pair) {
+    [[1, src.hsk1], [2, src.hsk2], [3, src.hsk3], [4, src.hsk4]].forEach(function (pair) {
       var level = pair[0], list = pair[1] || [];
       if (!list.length) return;
       LEVELS.push(level);

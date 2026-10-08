@@ -3,7 +3,7 @@
    ファイルを更新したら CACHE の版数を上げる（例: v2）。
    古いキャッシュは次の起動時に捨てられる。
    =========================================================== */
-var CACHE = "hsk-vocab-v5";
+var CACHE = "hsk-vocab-v6";
 
 var SHELL = [
   "./",
@@ -17,6 +17,7 @@ var SHELL = [
   "./data/hsk1.js",
   "./data/hsk2.js",
   "./data/hsk3.js",
+  "./data/hsk4.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
