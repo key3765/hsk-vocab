@@ -28,6 +28,7 @@
   --tetsu:      #3A5A78;   /* 鉄紺: 3級目のカードの目印 */
   --budo:       #6B4984;   /* 葡萄: 4級目のカードの目印 */
   --kurenai:    #A83D5E;   /* 紅: 5級目のカードの目印 */
+  --sabi:       #8A5420;   /* 錆: 6級目のカードの目印 */
 
   --radius:     14px;
   --radius-sm:  9px;
@@ -66,6 +67,7 @@
     --tetsu:     #7FA8C9;
     --budo:      #C9A3DE;
     --kurenai:   #E58FAE;
+    --sabi:      #D9A066;
 
     --shadow:      0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
     --shadow-lift: 0 2px 4px rgba(0,0,0,.55), 0 18px 40px -16px rgba(0,0,0,.8);
@@ -97,6 +99,7 @@
   --tetsu:     #7FA8C9;
   --budo:      #C9A3DE;
   --kurenai:   #E58FAE;
+  --sabi:      #D9A066;
 
   --shadow:      0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
   --shadow-lift: 0 2px 4px rgba(0,0,0,.55), 0 18px 40px -16px rgba(0,0,0,.8);
@@ -430,6 +433,7 @@ h2.h {
 .card[data-level="3"]::before { background: var(--tetsu); }
 .card[data-level="4"]::before { background: var(--budo); }
 .card[data-level="5"]::before { background: var(--kurenai); }
+.card[data-level="6"]::before { background: var(--sabi); }
 
 /* 発音を聴くボタン */
 .speak-btn {
