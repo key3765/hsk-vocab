@@ -63,7 +63,7 @@ python -m http.server 8765
    };
    ```
 
-4. `sw.js` の `var CACHE = "hsk-vocab-v9";` の数字を 1 つ上げて再公開する
+4. `sw.js` の `var CACHE = "hsk-vocab-v10";` の数字を 1 つ上げて再公開する
    （上げないと、既に開いた人の端末で古いファイルが使われ続けます）
 
 `enabled` が `false` の間は、枠の位置がわかるプレースホルダーが表示されます。

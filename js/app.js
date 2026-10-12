@@ -490,13 +490,14 @@ window.HSK = window.HSK || {};
       var ok = q.picked === q.answer;
       html += '<p class="quiz__feedback" data-ok="' + (ok ? 1 : 0) + '">' +
         (ok ? "正解" : "正解は「" + esc(q.dir === "zh2ja" ? w.j : w.w) + "」") + '</p>';
+      /* 次へは判定のすぐ下に置き、例文を読まずに進む人がスクロールしなくて済むようにする */
+      html += '<button class="btn btn--primary btn--block" data-act="quiz-next">' +
+        (quiz.i + 1 >= quiz.qs.length ? "結果を見る" : "次の問題") + '</button>';
       html += '<div class="example">' +
         '<span class="example__zh">' + esc(w.ez) + '</span>' +
         '<span class="example__py">' + esc(w.ep) + '</span>' +
         '<span class="example__ja">' + esc(w.ej) + '</span>' +
       '</div>';
-      html += '<button class="btn btn--primary btn--block" data-act="quiz-next">' +
-        (quiz.i + 1 >= quiz.qs.length ? "結果を見る" : "次の問題") + '</button>';
     } else {
       html += '<p class="quiz__feedback">&nbsp;</p>';
     }
@@ -521,6 +522,12 @@ window.HSK = window.HSK || {};
     store.touchStreak(day());
     store.save();
     render();
+    revealNext();
+  }
+
+  function revealNext() {
+    var b = el.screen.querySelector('[data-act="quiz-next"], [data-act="drill-next"]');
+    if (b && b.scrollIntoView) b.scrollIntoView({ block: "nearest" });
   }
 
   function renderQuizResult() {
@@ -698,9 +705,9 @@ window.HSK = window.HSK || {};
       var ok = q.picked === q.answer;
       html += '<p class="quiz__feedback" data-ok="' + (ok ? 1 : 0) + '">' +
         (ok ? "正解" : "不正解　正解は " + (q.answer + 1) + " 番") + '</p>';
-      html += drillExplainHtml(q);
       html += '<button class="btn btn--primary btn--block" data-act="drill-next">' +
         (drill.i + 1 >= drill.qs.length ? "結果を見る" : "次の問題") + '</button>';
+      html += drillExplainHtml(q);
     } else {
       html += '<p class="quiz__feedback">&nbsp;</p>';
     }
@@ -727,6 +734,7 @@ window.HSK = window.HSK || {};
       store.save();
     }
     render();
+    revealNext();
   }
 
   function wrongDrillHtml(q) {
