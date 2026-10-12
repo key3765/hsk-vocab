@@ -48,14 +48,15 @@ window.HSK = window.HSK || {};
 
   /* 小テストで間違えた語は「要復習」に引き戻す。
      正解は箱を進めない（学習画面の自己採点と二重に効かせない）。 */
-  function quizResult(id, ok, day) {
+  /* keepNew: 未学習(box -1)の語に正解しても箱に入れない */
+  function quizResult(id, ok, day, keepNew) {
     day = day || store.today();
     var c = store.card(id);
     c.seen += 1;
     c.last = day;
     if (ok) {
       c.ok += 1;
-      if (c.box < 0) { c.box = 0; c.due = store.shiftDays(day, 1); }
+      if (c.box < 0 && !keepNew) { c.box = 0; c.due = store.shiftDays(day, 1); }
     } else {
       c.ng += 1;
       c.box = 0;

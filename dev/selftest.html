@@ -121,6 +121,22 @@ function run() {
     }
     ok("quiz result", !!q(".score-big"), "steps=" + qguard);
     ok("quiz logged 10", S.state.log[S.today()].quiz === 10, S.state.log[S.today()].quiz);
+    ok("quiz scope defaults to all", S.settings.quizScope === "all");
+    ok("quiz recent 10", S.state.quizRecent.length === 10, S.state.quizRecent.length);
+    var firstQuiz = S.state.quizRecent.slice();
+    var newOkScheduled = firstQuiz.filter(function (id) {
+      var c = S.state.cards[id]; return c && c.ok > 0 && c.ng === 0 && c.seen === 1 && c.box >= 0;
+    }).length;
+    ok("correct on unstudied word not scheduled", newOkScheduled === 0, newOkScheduled);
+    click('[data-act="quiz-again"]');
+    var overlapQ = S.state.quizRecent.slice(10).filter(function (id) { return firstQuiz.indexOf(id) !== -1; }).length;
+    ok("next quiz avoids recent words", S.state.quizRecent.length === 20 && overlapQ === 0, S.state.quizRecent.length + "/" + overlapQ);
+    var qg2 = 0;
+    while (!q(".score-big") && qg2++ < 60) {
+      if (q(".choice:not([disabled])")) q(".choice:not([disabled])").click();
+      else if (q('[data-act="quiz-next"]')) q('[data-act="quiz-next"]').click();
+      else break;
+    }
     ok("ad slot on result", !!q('[data-ad="result"]'));
 
     /* --- 一覧 --- */

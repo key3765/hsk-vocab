@@ -38,6 +38,7 @@ window.HSK = window.HSK || {};
         levels: [1, 2],      // 出題対象の級
         goal: 20,            // 1日の目標カード数
         dir: "zh2ja",        // 小テストの向き: zh2ja / ja2zh / mix
+        quizScope: "all",    // 小テストの出題範囲: all / studied
         showPinyin: false,   // 表面にピンインを出すか
         theme: "auto"        // auto / light / dark
       },
@@ -46,7 +47,8 @@ window.HSK = window.HSK || {};
       streak: { cur: 0, best: 0, last: "" },
       /* 文法用語と例題の記録。単語の cards / log / streak とは混ぜない */
       terms: {},             // 用語id -> { ok, ng }
-      exam: { seen: [] }     // 出題済みの例題（"hsk2:番号"）。一巡したら空に戻す
+      exam: { seen: [] },    // 出題済みの例題（"hsk2:番号"）。一巡したら空に戻す
+      quizRecent: []         // 単語の小テストで直近に出した語の id。一巡したら空に戻す
     };
   }
 
@@ -73,7 +75,8 @@ window.HSK = window.HSK || {};
         log: saved.log && typeof saved.log === "object" ? saved.log : {},
         streak: merge(base.streak, saved.streak),
         terms: saved.terms && typeof saved.terms === "object" ? saved.terms : {},
-        exam: merge(base.exam, saved.exam)
+        exam: merge(base.exam, saved.exam),
+        quizRecent: Array.isArray(saved.quizRecent) ? saved.quizRecent : []
       };
       if (!Array.isArray(state.exam.seen)) state.exam.seen = [];
       var lv = state.settings.levels;

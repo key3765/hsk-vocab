@@ -409,11 +409,28 @@ window.HSK = window.HSK || {};
     var p = pool();
     if (p.length < 4) return null;
 
-    /* 学習済みを優先して出す。足りなければ全体から補う。 */
-    var studied = p.filter(function (x) { return store.stage(x.id) !== "new"; });
-    var source = studied.length >= 4 ? studied.slice() : p.slice();
-    shuffle(source);
+    /* 出題範囲: all = 選んだ級の全体 / studied = 学習した語を先に出し、足りない分を全体から補う。
+       どちらも直近に出た語は後回しにし、範囲内を出し切ったら履歴を空に戻して一巡させる。 */
+    var recent = {};
+    store.state.quizRecent.forEach(function (id) { recent[id] = true; });
+    var byRecency = function (list) {
+      return shuffle(list.filter(function (x) { return !recent[x.id]; }))
+        .concat(shuffle(list.filter(function (x) { return recent[x.id]; })));
+    };
+    var source;
+    if (store.settings.quizScope === "studied") {
+      var studied = p.filter(function (x) { return store.stage(x.id) !== "new"; });
+      var rest = p.filter(function (x) { return store.stage(x.id) === "new"; });
+      source = byRecency(studied).concat(byRecency(rest));
+    } else {
+      source = byRecency(p);
+    }
     var picked = source.slice(0, Math.min(n, source.length));
+
+    var freshLeft = p.filter(function (x) { return !recent[x.id]; }).length;
+    var pickedIds = picked.map(function (x) { return x.id; });
+    store.state.quizRecent = freshLeft <= picked.length ? pickedIds : store.state.quizRecent.concat(pickedIds);
+    store.save();
 
     var dirSetting = store.settings.dir;
     var qs = picked.map(function (w) {
@@ -517,7 +534,8 @@ window.HSK = window.HSK || {};
     if (ok) quiz.score += 1;
     else quiz.wrong.push(q.w);
 
-    srs.quizResult(q.w.id, ok, day());
+    /* 未学習の語に正解しただけでは復習の予定に入れない（全体から出すと予定が膨らむため） */
+    srs.quizResult(q.w.id, ok, day(), true);
     store.logDay(day()).quiz += 1;
     store.touchStreak(day());
     store.save();
@@ -1044,6 +1062,13 @@ window.HSK = window.HSK || {};
         segBtn("dir", "mix", "混ぜる") +
       '</div>' +
       '<span class="field__help">「日 → 中」は書く・話す力につながります。</span></div>';
+
+    html += '<div class="field"><span class="field__label">小テストの出題範囲</span>' +
+      '<div class="seg">' +
+        segBtn("quizScope", "all", "選んだ級の全体") +
+        segBtn("quizScope", "studied", "学習した語を優先") +
+      '</div>' +
+      '<span class="field__help">どちらも直近に出た語は後回しにします。間違えた語は要復習に入ります。</span></div>';
 
     html += '<div class="field"><span class="field__label">カードの表にピンイン</span>' +
       '<div class="seg">' +
