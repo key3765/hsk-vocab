@@ -639,6 +639,34 @@ h2.h {
 .wrong-list { display: flex; flex-direction: column; gap: 1px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--line); }
 .wrong-list .word-row { border: 0; border-radius: 0; }
 
+/* 文法用語テスト・例題テスト — 文章を読ませる問題なので左寄せにする */
+.quiz__prompt--text {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  text-align: left;
+}
+.quiz__prompt--text .pos-chip { align-self: flex-start; }
+.quiz__prompt--text .q-ja { align-self: stretch; text-align: center; }
+.quiz__prompt--text .q-sub { margin-top: 0; }
+.q-zh { font-family: var(--font-han); font-size: 18px; line-height: 1.75; overflow-wrap: anywhere; }
+.q-star { padding-top: 8px; border-top: 1px dashed var(--line-2); align-self: stretch; }
+.q-def { font-size: 16px; line-height: 1.7; font-weight: 600; }
+.q-term-zh { align-self: stretch; text-align: center; font-size: 13px; color: var(--jade); letter-spacing: .04em; }
+.q-play { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.q-play svg { width: 18px; height: 18px; }
+.q-script { align-self: stretch; }
+.q-script summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--jade); padding: 4px 0; }
+.q-script .q-zh { padding: 8px 12px; margin-top: 6px; background: var(--surface-2); border-radius: var(--radius-sm); }
+.han { font-family: var(--font-han); }
+
+/* 用語集の行: 字面の列が要らないので2列にする */
+.term-row { grid-template-columns: 1fr auto; }
+.term-row__t { font-size: 15px; }
+.term-row__t .han { font-size: 14px; color: var(--jade); font-weight: 600; }
+.term-row__zh { font-family: var(--font-han); font-size: 15px; line-height: 1.6; }
+.term-detail__zh { margin: 0; text-align: center; font-size: 14px; color: var(--jade); letter-spacing: .04em; }
+.term-detail__zh .han { font-size: 18px; }
+.term-detail__d { margin: 0; font-size: 14.5px; line-height: 1.8; color: var(--ink-2); }
+
 /* =========================================================
    一覧
    ========================================================= */
@@ -792,7 +820,7 @@ h2.h {
   max-width: 480px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   padding: 0 0 env(safe-area-inset-bottom, 0px);
   background: color-mix(in srgb, var(--paper) 92%, transparent);
   backdrop-filter: blur(12px);

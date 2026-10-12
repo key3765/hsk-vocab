@@ -43,7 +43,10 @@ window.HSK = window.HSK || {};
       },
       cards: {},             // id -> { box, due, seen, ok, ng, last }
       log: {},               // YYYY-MM-DD -> { studied, quiz }
-      streak: { cur: 0, best: 0, last: "" }
+      streak: { cur: 0, best: 0, last: "" },
+      /* 文法用語と例題の記録。単語の cards / log / streak とは混ぜない */
+      terms: {},             // 用語id -> { ok, ng }
+      exam: { seen: [] }     // 出題済みの例題（"hsk2:番号"）。一巡したら空に戻す
     };
   }
 
@@ -68,8 +71,11 @@ window.HSK = window.HSK || {};
         settings: merge(base.settings, saved.settings),
         cards: saved.cards && typeof saved.cards === "object" ? saved.cards : {},
         log: saved.log && typeof saved.log === "object" ? saved.log : {},
-        streak: merge(base.streak, saved.streak)
+        streak: merge(base.streak, saved.streak),
+        terms: saved.terms && typeof saved.terms === "object" ? saved.terms : {},
+        exam: merge(base.exam, saved.exam)
       };
+      if (!Array.isArray(state.exam.seen)) state.exam.seen = [];
       var lv = state.settings.levels;
       if (!Array.isArray(lv) || !lv.length) state.settings.levels = [1, 2];
     } catch (e) {

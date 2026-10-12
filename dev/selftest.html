@@ -14,6 +14,8 @@
 <script src="../data/hsk4.js"></script>
 <script src="../data/hsk5.js"></script>
 <script src="../data/hsk6.js"></script>
+<script src="../data/grammar.js"></script>
+<script src="../data/exam-hsk2.js"></script>
 <script src="../js/store.js"></script>
 <script src="../js/srs.js"></script>
 <script src="../js/ads.js"></script>
@@ -58,7 +60,7 @@ function run() {
     /* --- ホーム --- */
     ok("home ring", !!q(".ring__num"));
     ok("home seal", !!q(".seal"));
-    ok("tabs = 3", qa("#tabbar button").length === 3);
+    ok("tabs = 4", qa("#tabbar button").length === 4);
     ok("6 level chips on home", qa(".levels .chip").length === 6, qa(".levels .chip").length);
     ok("ad slot on home", !!q('[data-ad="home"]'));
 
@@ -248,6 +250,54 @@ function run() {
     var raw = localStorage.getItem("hsk-vocab:v1");
     var parsed = raw ? JSON.parse(raw) : null;
     ok("persisted to localStorage", !!(parsed && parsed.cards && Object.keys(parsed.cards).length > 0));
+
+    /* --- 文法用語・例題（単語の記録と混ざらないこと） --- */
+    var T = A.terms(), E = A.exam();
+    ok("terms loaded", T.length >= 30, T.length);
+    var tid = {}, tdup = 0;
+    T.forEach(function (x) { if (tid[x.id]) tdup++; tid[x.id] = 1; });
+    ok("term ids unique", tdup === 0, "dup=" + tdup);
+    ok("term fields filled", T.filter(function (x) { return !x.t || !x.z || !x.zp || !x.d || !x.ez || !x.ep || !x.ej; }).length === 0);
+    ok("exam loaded 52", E.length === 52, E.length);
+    ok("exam fields filled", E.filter(function (x) {
+      return !x.e || (x.t === "T" ? !x.p || !x.s || typeof x.a !== "boolean" : !x.o || x.o.length < 3);
+    }).length === 0);
+
+    var before = JSON.stringify({ c: S.state.cards, l: S.state.log, s: S.state.streak });
+    click('[data-tab="terms"]');
+    ok("terms list", qa(".term-row").length === T.length, qa(".term-row").length);
+    click('[data-term="' + T[0].id + '"]');
+    ok("term detail sheet", !!q(".term-detail__d"));
+    click('[data-act="sheet-close"]');
+    click('[data-go="terms-quiz"]');
+    ok("term quiz 4 choices", qa(".choice").length === 4, qa(".choice").length);
+    var tg = 0;
+    while (!q(".score-big") && tg++ < 60) {
+      if (q(".choice:not([disabled])")) q(".choice:not([disabled])").click();
+      else if (q('[data-act="drill-next"]')) q('[data-act="drill-next"]').click();
+      else break;
+    }
+    ok("term quiz result", !!q(".score-big"), "steps=" + tg);
+    var tAns = Object.keys(S.state.terms).reduce(function (n, k) { return n + S.state.terms[k].ok + S.state.terms[k].ng; }, 0);
+    ok("term answers recorded 10", tAns === 10, tAns);
+
+    click('[data-go="home"]');
+    click('[data-go="exam"]');
+    ok("exam prompt", !!q(".quiz__prompt--text"));
+    var eg = 0;
+    while (!q(".score-big") && eg++ < 60) {
+      if (q(".choice:not([disabled])")) q(".choice:not([disabled])").click();
+      else if (q('[data-act="drill-next"]')) q('[data-act="drill-next"]').click();
+      else break;
+    }
+    ok("exam result", !!q(".score-big"), "steps=" + eg);
+    ok("exam seen 10", S.state.exam.seen.length === 10, S.state.exam.seen.length);
+    var firstSeen = S.state.exam.seen.slice();
+    click('[data-act="drill-again"]');
+    var overlap = S.state.exam.seen.slice(10).filter(function (id) { return firstSeen.indexOf(id) !== -1; }).length;
+    ok("next exam avoids seen", S.state.exam.seen.length === 20 && overlap === 0, S.state.exam.seen.length + "/" + overlap);
+    ok("word records untouched", JSON.stringify({ c: S.state.cards, l: S.state.log, s: S.state.streak }) === before);
+    click('[data-act="leave"]');
 
     /* 片方の級だけでも小テストが組めるか */
     S.settings.levels = [1];

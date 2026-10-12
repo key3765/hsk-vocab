@@ -50,6 +50,15 @@ window.HSK = window.HSK || {};
     });
   }
 
+  /* 文法用語と例題。単語（WORDS）とは別の配列・別の記録で扱う */
+  var TERMS = (window.HSK_GRAMMAR || []).slice();
+  var EXAM = ((window.HSK_EXAM || {}).hsk2 || []).map(function (q, i) {
+    var o = {}, k;
+    for (k in q) if (Object.prototype.hasOwnProperty.call(q, k)) o[k] = q[k];
+    o.id = "hsk2:" + i;
+    return o;
+  });
+
   function levelWords(level) {
     return WORDS.filter(function (x) { return x.level === level; });
   }
@@ -88,6 +97,7 @@ window.HSK = window.HSK || {};
     chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11M10 20V5M16 20v-6M22 20H2"/></svg>',
     /* 歯車は小さく描くと太陽に見えるので、つまみ（スライダー）の形にする */
     gear:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+    book:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"/></svg>',
     back:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
     search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -106,6 +116,9 @@ window.HSK = window.HSK || {};
   var view = "home";
   var session = null;
   var quiz = null;
+  var drill = null;         // 文法用語テスト・例題テスト（単語の quiz とは別）
+  var termUI = { q: "" };
+  var termId = null;
   var listUI = { q: "", filter: "all" };
   var detailId = null;
   var sheet = null;         // "settings" | "detail" | null
@@ -209,6 +222,18 @@ window.HSK = window.HSK || {};
       '<div class="levels">' + levelChips() + '</div>' +
       meterHtml(c) +
     '</section>';
+
+    /* 単語以外の練習。結果は単語の記録・連続日数に入れない */
+    if (EXAM.length || TERMS.length) {
+      html += '<section class="breakdown">' +
+        '<div class="section-head"><h2 class="h">単語以外の練習</h2></div>' +
+        '<div class="quick-row">' +
+          (EXAM.length ? '<button class="btn" data-go="exam">HSK2 例題 10問</button>' : '') +
+          (TERMS.length ? '<button class="btn" data-go="terms-quiz">文法用語 10問</button>' : '') +
+        '</div>' +
+        '<p class="note">どちらも毎回ランダムに出題します。結果は単語の学習記録とは別に保存します。</p>' +
+      '</section>';
+    }
 
     html += ads.slotHtml("home");
 
@@ -535,6 +560,299 @@ window.HSK = window.HSK || {};
   }
 
   /* ==================================================
+     文法用語テスト・例題テスト
+     単語の小テストとは別物。srs・cards・log・streak には一切触れない。
+     ================================================== */
+  var EXAM_LABEL = { L: "听力・会話", T: "阅读・√/×判断", B: "阅读・空欄補充", R: "阅读・応答選択" };
+
+  function termLabelHtml(x) {
+    return '<b>' + esc(x.t) + '</b>　<span class="han">' + esc(x.z) + '</span>';
+  }
+
+  function buildTermDrill(n) {
+    if (TERMS.length < 4) return null;
+    var picked = shuffle(TERMS.slice()).slice(0, Math.min(n, TERMS.length));
+    var qs = picked.map(function (x) {
+      var dir = Math.random() < 0.5 ? "t2d" : "d2t";
+      var others = shuffle(TERMS.filter(function (y) { return y.id !== x.id; })).slice(0, 3);
+      var choices = shuffle(others.concat([x]));
+      return {
+        kind: "term", ref: x, dir: dir,
+        choices: choices.map(function (c) { return dir === "t2d" ? esc(c.d) : termLabelHtml(c); }),
+        answer: choices.indexOf(x), picked: -1
+      };
+    });
+    return { type: "terms", qs: qs, i: 0, score: 0, wrong: [] };
+  }
+
+  /* 出題済みの例題は後回しにし、全問出たら一巡として履歴を空に戻す */
+  function buildExamDrill(n) {
+    if (!EXAM.length) return null;
+    var seen = store.state.exam.seen;
+    var fresh = shuffle(EXAM.filter(function (x) { return seen.indexOf(x.id) === -1; }));
+    var old = shuffle(EXAM.filter(function (x) { return seen.indexOf(x.id) !== -1; }));
+    var picked = fresh.concat(old).slice(0, Math.min(n, EXAM.length));
+    var ids = picked.map(function (x) { return x.id; });
+    store.state.exam.seen = fresh.length <= picked.length ? ids : seen.concat(ids);
+    store.save();
+
+    var qs = picked.map(function (x) {
+      var opts = x.t === "T"
+        ? [{ html: "√　本文と合っている", ok: x.a }, { html: "×　本文と違う", ok: !x.a }]
+        : shuffle(x.o.map(function (v, i) { return { html: '<span class="han">' + esc(v) + '</span>', ok: i === 0 }; }));
+      var answer = 0;
+      opts.forEach(function (o, i) { if (o.ok) answer = i; });
+      return { kind: "exam", ref: x, choices: opts.map(function (o) { return o.html; }), answer: answer, picked: -1 };
+    });
+    return { type: "exam", qs: qs, i: 0, score: 0, wrong: [] };
+  }
+
+  function startDrill(type) {
+    var d = type === "terms" ? buildTermDrill(10) : buildExamDrill(10);
+    if (!d) { toast("出題できる問題がありません"); return; }
+    drill = d;
+    go("drill");
+  }
+
+  function listenText(x) {
+    return x.d.map(function (line) { return line.replace(/^[男女]：/, ""); }).join("　") + "　" + x.q;
+  }
+
+  function drillPromptHtml(q, answered) {
+    var x = q.ref;
+    if (q.kind === "term") {
+      return q.dir === "t2d"
+        ? '<div class="q-ja">' + esc(x.t) + '</div>' +
+          '<div class="q-term-zh"><span class="han">' + esc(x.z) + '</span>　' + esc(x.zp) + '</div>' +
+          '<div class="q-sub">説明はどれ？</div>'
+        : '<div class="q-def">' + esc(x.d) + '</div>' +
+          '<div class="q-sub">この説明に当てはまる用語は？</div>';
+    }
+
+    var h = '<span class="pos-chip">' + EXAM_LABEL[x.t] + '</span>';
+    if (x.t === "L") {
+      var canSpeak = tts && tts.supported();
+      if (canSpeak) {
+        h += '<button class="btn btn--block q-play" data-act="speak" data-text="' + esc(listenText(x)) + '">' +
+          ICON.speak + '<span>音声を再生</span></button>';
+      }
+      h += '<details class="q-script"' + (answered || !canSpeak ? ' open' : '') + '>' +
+        '<summary>スクリプトを見る</summary>' +
+        '<div class="q-zh">' + x.d.map(esc).join('<br>') + '</div></details>';
+      h += '<div class="q-zh">问：' + esc(x.q) + '</div>';
+    } else if (x.t === "T") {
+      h += '<div class="q-zh">' + esc(x.p) + '</div><div class="q-zh q-star">★ ' + esc(x.s) + '</div>';
+    } else if (x.t === "B") {
+      h += '<div class="q-zh">' + esc(x.p) + '</div><div class="q-sub">（　）に入る語は？</div>';
+    } else {
+      h += '<div class="q-zh">' + esc(x.p) + '</div><div class="q-sub">応答として正しいものは？</div>';
+    }
+    return h;
+  }
+
+  function drillExplainHtml(q) {
+    var x = q.ref;
+    if (q.kind === "term") {
+      return '<div class="example">' +
+        '<span class="example__ja">' + termLabelHtml(x) + '<br>' + esc(x.d) + '</span>' +
+        '<span class="example__zh">' + esc(x.ez) + speakBtnHtml(x.ez, "speak-btn--inline") + '</span>' +
+        '<span class="example__py">' + esc(x.ep) + '</span>' +
+        '<span class="example__ja">' + esc(x.ej) + '</span>' +
+      '</div>';
+    }
+    return '<div class="example"><span class="example__ja">' + esc(x.e) + '</span></div>';
+  }
+
+  function renderDrill() {
+    if (!drill) { go("home"); return; }
+    if (drill.i >= drill.qs.length) { renderDrillResult(); return; }
+
+    var q = drill.qs[drill.i];
+    var answered = q.picked !== -1;
+
+    var html = '<div class="quiz">';
+    html += '<div class="study__bar">' +
+      '<span>第 ' + (drill.i + 1) + ' / ' + drill.qs.length + ' 問</span>' +
+      '<span class="study__track"><span class="study__fill" style="width:' +
+        (drill.i / drill.qs.length * 100).toFixed(1) + '%"></span></span>' +
+      '<span class="tnum">正解 ' + drill.score + '</span>' +
+    '</div>';
+
+    html += '<div class="quiz__prompt quiz__prompt--text">' + drillPromptHtml(q, answered) + '</div>';
+
+    html += '<div class="choices">';
+    q.choices.forEach(function (c, idx) {
+      var cls = "choice";
+      if (answered) {
+        if (idx === q.answer) cls += " is-correct";
+        else if (idx === q.picked) cls += " is-wrong";
+      }
+      html += '<button class="' + cls + '" data-choice="' + idx + '"' + (answered ? " disabled" : "") + '>' +
+        '<span class="choice__key">' + (idx + 1) + '</span>' +
+        '<span class="choice__text">' + c + '</span>' +
+      '</button>';
+    });
+    html += '</div>';
+
+    if (answered) {
+      var ok = q.picked === q.answer;
+      html += '<p class="quiz__feedback" data-ok="' + (ok ? 1 : 0) + '">' +
+        (ok ? "正解" : "不正解　正解は " + (q.answer + 1) + " 番") + '</p>';
+      html += drillExplainHtml(q);
+      html += '<button class="btn btn--primary btn--block" data-act="drill-next">' +
+        (drill.i + 1 >= drill.qs.length ? "結果を見る" : "次の問題") + '</button>';
+    } else {
+      html += '<p class="quiz__feedback">&nbsp;</p>';
+    }
+
+    html += '</div>';
+    el.screen.className = "screen screen--flush";
+    el.screen.innerHTML = html;
+  }
+
+  function answerDrill(idx) {
+    if (!drill) return;
+    var q = drill.qs[drill.i];
+    if (!q || q.picked !== -1) return;
+
+    q.picked = idx;
+    var ok = idx === q.answer;
+    if (ok) drill.score += 1;
+    else drill.wrong.push(q);
+
+    if (q.kind === "term") {
+      var r = store.state.terms[q.ref.id] || (store.state.terms[q.ref.id] = { ok: 0, ng: 0 });
+      if (ok) r.ok += 1; else r.ng += 1;
+      r.last = ok;
+      store.save();
+    }
+    render();
+  }
+
+  function wrongDrillHtml(q) {
+    var x = q.ref;
+    if (q.kind === "term") {
+      return '<button class="word-row term-row" data-term="' + esc(x.id) + '">' +
+        '<span class="word-row__mid"><span class="term-row__t">' + termLabelHtml(x) + '</span><br>' +
+        '<span class="word-row__ja">' + esc(x.d) + '</span></span></button>';
+    }
+    var stem = x.t === "L" ? x.d.join(" ") + "　问：" + x.q
+      : x.t === "T" ? x.p + "　★" + x.s
+      : x.p;
+    var right = x.t === "T" ? (x.a ? "√" : "×") : x.o[0];
+    return '<div class="word-row term-row">' +
+      '<span class="word-row__mid"><span class="term-row__zh">' + esc(stem) + '</span><br>' +
+      '<span class="word-row__ja">正解：<span class="han">' + esc(right) + '</span>　' + esc(x.e) + '</span></span></div>';
+  }
+
+  function renderDrillResult() {
+    var total = drill.qs.length;
+    var pct = Math.round(drill.score / total * 100);
+    var isTerms = drill.type === "terms";
+
+    var html = '<div class="quiz">';
+    html += '<p class="eyebrow">' + (isTerms ? "文法用語テストの結果" : "HSK2 例題テストの結果") + '</p>';
+    html += '<div class="score-big">' + drill.score + '<span style="font-size:24px;color:var(--muted)"> / ' + total + '</span>' +
+      '<small>正答率 ' + pct + '%</small></div>';
+    if (!isTerms) {
+      html += '<p class="note" style="text-align:center">' +
+        (pct >= 60 ? "合格ライン（6割）を超えています" : "合格ラインは6割です") + '</p>';
+    }
+
+    if (drill.wrong.length) {
+      html += '<div class="section-head"><h2 class="h">' + (isTerms ? "間違えた用語" : "間違えた問題") + '</h2></div>';
+      html += '<div class="wrong-list">' + drill.wrong.map(wrongDrillHtml).join("") + '</div>';
+    }
+
+    html += '<button class="btn btn--primary btn--block" data-act="drill-again">別の問題でもう10問</button>';
+    html += '<div class="quick-row">' +
+      (isTerms
+        ? '<button class="btn" data-tab="terms">用語集へ</button>'
+        : '<button class="btn" data-go="terms-quiz">文法用語テストへ</button>') +
+      '<button class="btn" data-go="home">ホームへ</button>' +
+    '</div>';
+
+    html += ads.slotHtml("result");
+    html += '</div>';
+
+    el.screen.className = "screen screen--flush";
+    el.screen.innerHTML = html;
+  }
+
+  /* ==================================================
+     文法用語集
+     ================================================== */
+  function filteredTerms() {
+    var q = termUI.q.trim().toLowerCase();
+    if (!q) return TERMS;
+    return TERMS.filter(function (x) {
+      return x.t.indexOf(q) !== -1 || x.z.indexOf(q) !== -1 ||
+        x.zp.toLowerCase().indexOf(q) !== -1 || x.d.indexOf(q) !== -1 || x.ez.indexOf(q) !== -1;
+    });
+  }
+
+  function termBadgeHtml(id) {
+    var r = store.state.terms[id];
+    if (!r) return '<span class="badge badge--new">未出題</span>';
+    return r.last === false
+      ? '<span class="badge badge--due">要確認</span>'
+      : '<span class="badge badge--mature">正解</span>';
+  }
+
+  function termRowHtml(x) {
+    return '<button class="word-row term-row" data-term="' + esc(x.id) + '">' +
+      '<span class="word-row__mid"><span class="term-row__t">' + termLabelHtml(x) + '</span><br>' +
+      '<span class="word-row__ja">' + esc(x.d) + '</span></span>' +
+      termBadgeHtml(x.id) +
+    '</button>';
+  }
+
+  function termListHtml(rows) {
+    return rows.length
+      ? '<div class="word-list">' + rows.map(termRowHtml).join("") + '</div>'
+      : '<p class="empty">該当する用語がありません。</p>';
+  }
+
+  function renderTerms() {
+    var rows = filteredTerms();
+    var html = '<button class="btn btn--primary btn--block" data-go="terms-quiz">文法用語テスト 10問</button>';
+
+    html += '<div class="search">' + ICON.search +
+      '<input id="term-search" type="search" inputmode="search" placeholder="用語・中国語名・例文で探す" ' +
+      'value="' + esc(termUI.q) + '" aria-label="用語を検索">' +
+    '</div>';
+
+    html += '<div class="section-head"><h2 class="h">文法用語集</h2>' +
+      '<span class="note tnum">' + rows.length + ' 語</span></div>';
+    html += termListHtml(rows);
+    html += '<p class="foot">用語テストの結果は単語の学習記録とは別に保存されます。</p>';
+
+    el.screen.className = "screen";
+    el.screen.innerHTML = html;
+  }
+
+  function termDetailHtml() {
+    var x = TERMS.filter(function (t) { return t.id === termId; })[0];
+    if (!x) return '<p class="empty">用語が見つかりません。</p>';
+    var r = store.state.terms[x.id] || { ok: 0, ng: 0 };
+
+    var html = '<div class="section-head"><h2 class="h">文法用語</h2>' +
+      '<button class="icon-btn" data-act="sheet-close" aria-label="閉じる">' + ICON.close + '</button></div>';
+    html += '<div class="detail">' +
+      '<p class="card__ja">' + esc(x.t) + '</p>' +
+      '<p class="term-detail__zh"><span class="han">' + esc(x.z) + '</span>　' + esc(x.zp) + '</p>' +
+      '<p class="term-detail__d">' + esc(x.d) + '</p>' +
+      '<div class="example">' +
+        '<span class="example__zh">' + esc(x.ez) + speakBtnHtml(x.ez, "speak-btn--inline") + '</span>' +
+        '<span class="example__py">' + esc(x.ep) + '</span>' +
+        '<span class="example__ja">' + esc(x.ej) + '</span>' +
+      '</div>' +
+    '</div>';
+    html += '<div class="kpi-grid">' + kpi(r.ok, "回", "正解") + kpi(r.ng, "回", "間違い") + '</div>';
+    return html;
+  }
+
+  /* ==================================================
      一覧
      ================================================== */
   var FILTERS = [
@@ -677,7 +995,7 @@ window.HSK = window.HSK || {};
   function openSheet(kind) { sheet = kind; renderSheet(); }
 
   function closeSheet() {
-    sheet = null; detailId = null;
+    sheet = null; detailId = null; termId = null;
     el.sheet.innerHTML = "";
     el.sheet.hidden = true;
   }
@@ -689,8 +1007,8 @@ window.HSK = window.HSK || {};
        closest() が背景を拾って閉じてしまうのを避けるため。 */
     el.sheet.innerHTML = '<div class="sheet-wrap">' +
       '<div class="sheet" role="dialog" aria-modal="true" aria-label="' +
-      (sheet === "settings" ? "設定" : "単語の詳細") + '">' +
-      (sheet === "settings" ? settingsHtml() : detailHtml()) +
+      (sheet === "settings" ? "設定" : sheet === "term" ? "用語の詳細" : "単語の詳細") + '">' +
+      (sheet === "settings" ? settingsHtml() : sheet === "term" ? termDetailHtml() : detailHtml()) +
       '</div></div>';
   }
 
@@ -795,11 +1113,13 @@ window.HSK = window.HSK || {};
   var TABS = [
     { k: "home", label: "学習", icon: "cards" },
     { k: "list", label: "一覧", icon: "list" },
+    { k: "terms", label: "用語", icon: "book" },
     { k: "stats", label: "記録", icon: "chart" }
   ];
 
   function tabFor(v) {
     if (v === "study" || v === "quiz") return "home";
+    if (v === "drill") return drill && drill.type === "terms" ? "terms" : "home";
     return v;
   }
 
@@ -815,9 +1135,11 @@ window.HSK = window.HSK || {};
   }
 
   function renderTopbar() {
-    var inFlow = view === "study" || view === "quiz";
+    var inFlow = view === "study" || view === "quiz" || view === "drill";
     var title = view === "study" ? "学習中"
       : view === "quiz" ? "小テスト"
+      : view === "drill" ? (drill && drill.type === "terms" ? "文法用語テスト" : "HSK2 例題テスト")
+      : view === "terms" ? "文法用語集"
       : view === "list" ? "単語一覧"
       : view === "stats" ? "学習の記録"
       : "HSK 単語帳";
@@ -837,6 +1159,8 @@ window.HSK = window.HSK || {};
     if (view === "home") renderHome();
     else if (view === "study") renderStudy();
     else if (view === "quiz") renderQuiz();
+    else if (view === "drill") renderDrill();
+    else if (view === "terms") renderTerms();
     else if (view === "list") renderList();
     else if (view === "stats") renderStats();
     renderTabs();
@@ -871,6 +1195,7 @@ window.HSK = window.HSK || {};
     var choice = hit("data-choice");
     var filter = hit("data-filter");
     var wordId = hit("data-word");
+    var termRef = hit("data-term");
     var levelBtn = hit("data-level");
     var setKey = hit("data-set");
 
@@ -900,7 +1225,7 @@ window.HSK = window.HSK || {};
     }
 
     if (tab) {
-      if (view === "study" || view === "quiz") { session = null; quiz = null; }
+      if (view === "study" || view === "quiz" || view === "drill") { session = null; quiz = null; drill = null; }
       go(tab);
       return;
     }
@@ -909,16 +1234,20 @@ window.HSK = window.HSK || {};
       if (goTo === "study-normal") { startStudy("normal"); return; }
       if (goTo === "study-weak") { startStudy("weak"); return; }
       if (goTo === "quiz") { startQuiz(); return; }
-      if (goTo === "home") { session = null; quiz = null; go("home"); return; }
+      if (goTo === "exam") { startDrill("exam"); return; }
+      if (goTo === "terms-quiz") { startDrill("terms"); return; }
+      if (goTo === "home") { session = null; quiz = null; drill = null; go("home"); return; }
     }
 
     if (grade) { doGrade(grade); return; }
 
-    if (choice !== null) { answerQuiz(+choice); return; }
+    if (choice !== null) { if (view === "drill") answerDrill(+choice); else answerQuiz(+choice); return; }
 
     if (filter) { listUI.filter = filter; render(); return; }
 
     if (wordId) { detailId = wordId; openSheet("detail"); return; }
+
+    if (termRef) { termId = termRef; openSheet("term"); return; }
 
     switch (act) {
       case "speak": {
@@ -929,9 +1258,11 @@ window.HSK = window.HSK || {};
       case "reveal":
         if (session && !session.revealed) { session.revealed = true; render(); }
         return;
-      case "leave":
-        session = null; quiz = null; go("home");
+      case "leave": {
+        var back = drill && drill.type === "terms" ? "terms" : "home";
+        session = null; quiz = null; drill = null; go(back);
         return;
+      }
       case "settings":
         openSheet("settings");
         return;
@@ -943,6 +1274,12 @@ window.HSK = window.HSK || {};
         return;
       case "quiz-again":
         startQuiz();
+        return;
+      case "drill-next":
+        if (drill) { drill.i += 1; render(); }
+        return;
+      case "drill-again":
+        if (drill) startDrill(drill.type);
         return;
       case "goal+":
         store.settings.goal = Math.min(100, store.settings.goal + 5);
@@ -972,7 +1309,7 @@ window.HSK = window.HSK || {};
         if (window.confirm("学習記録と連続日数をすべて消します。元に戻せません。よろしいですか？")) {
           store.reset();
           applyTheme();
-          session = null; quiz = null;
+          session = null; quiz = null; drill = null;
           closeSheet();
           go("home");
           toast("記録を消しました");
@@ -982,6 +1319,15 @@ window.HSK = window.HSK || {};
   }
 
   function onInput(e) {
+    if (e.target && e.target.id === "term-search") {
+      termUI.q = e.target.value;
+      var trows = filteredTerms();
+      var tcount = el.screen.querySelector(".section-head .note");
+      if (tcount) tcount.textContent = trows.length + " 語";
+      var tnode = el.screen.querySelector(".word-list") || el.screen.querySelector(".empty");
+      if (tnode) tnode.outerHTML = termListHtml(trows);
+      return;
+    }
     if (e.target && e.target.id === "list-search") {
       listUI.q = e.target.value;
       var rows = filteredWords();
@@ -1013,6 +1359,14 @@ window.HSK = window.HSK || {};
         if (e.key === "2") { doGrade("hard"); return; }
         if (e.key === "3" || e.key === " " || e.key === "Enter") { e.preventDefault(); doGrade("good"); return; }
       }
+      return;
+    }
+
+    if (view === "drill" && drill) {
+      var dq = drill.qs[drill.i];
+      if (!dq) return;
+      if (dq.picked === -1 && /^[1-4]$/.test(e.key) && +e.key <= dq.choices.length) { answerDrill(+e.key - 1); return; }
+      if (dq.picked !== -1 && (e.key === " " || e.key === "Enter")) { e.preventDefault(); drill.i += 1; render(); }
       return;
     }
 
@@ -1057,7 +1411,12 @@ window.HSK = window.HSK || {};
     go("home");
   }
 
-  ns.app = { init: init, words: function () { return WORDS; } };
+  ns.app = {
+    init: init,
+    words: function () { return WORDS; },
+    terms: function () { return TERMS; },
+    exam: function () { return EXAM; }
+  };
 })(window.HSK);
 
 document.addEventListener("DOMContentLoaded", function () { window.HSK.app.init(); });
