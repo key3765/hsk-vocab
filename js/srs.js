@@ -65,27 +65,30 @@ window.HSK = window.HSK || {};
     store.save();
   }
 
-  /* その日に出す順番を組む。
-     復習期限が来たものを先に、残りを未学習で埋める。 */
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  /* その日に出す分を組む。対象は「まだ覚えていないもの」だけ（習得＝箱3以上は出さない）。
+     覚えかけで復習期限が来たものを先に、残りを未学習で埋める。どちらもランダムに選ぶ。 */
   function buildSession(pool, limit, day) {
     day = day || store.today();
     var due = [], fresh = [], i, id;
 
     for (i = 0; i < pool.length; i++) {
       id = pool[i].id;
+      if (store.stage(id) === "mature") continue;
       if (store.isDue(id, day)) due.push(pool[i]);
       else if (!store.hasCard(id) || store.card(id).box < 0) fresh.push(pool[i]);
     }
 
-    /* 期限超過が長いものから先に */
-    due.sort(function (a, b) {
-      var da = store.card(a.id).due || "", db = store.card(b.id).due || "";
-      return da < db ? -1 : da > db ? 1 : 0;
-    });
-
-    var out = due.slice(0, limit);
-    if (out.length < limit) out = out.concat(fresh.slice(0, limit - out.length));
-    return out;
+    var out = shuffle(due).slice(0, limit);
+    if (out.length < limit) out = out.concat(shuffle(fresh).slice(0, limit - out.length));
+    return shuffle(out);
   }
 
   function counts(pool, day) {
