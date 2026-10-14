@@ -73,15 +73,15 @@ window.HSK = window.HSK || {};
     return a;
   }
 
-  /* その日に出す分を組む。対象は「まだ覚えていないもの」だけ（習得＝箱3以上は出さない）。
-     覚えかけで復習期限が来たものを先に、残りを未学習で埋める。どちらもランダムに選ぶ。 */
+  /* その日に出す分を組む。
+     復習期限が来たもの（習得済みも含む）を先に、残りを未学習で埋める。どちらもランダムに選ぶ。
+     覚えたものも間隔を空けて思い出させることで定着させる。 */
   function buildSession(pool, limit, day) {
     day = day || store.today();
     var due = [], fresh = [], i, id;
 
     for (i = 0; i < pool.length; i++) {
       id = pool[i].id;
-      if (store.stage(id) === "mature") continue;
       if (store.isDue(id, day)) due.push(pool[i]);
       else if (!store.hasCard(id) || store.card(id).box < 0) fresh.push(pool[i]);
     }
