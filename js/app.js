@@ -238,7 +238,8 @@ window.HSK = window.HSK || {};
     html += ads.slotHtml("home");
 
     html += '<p class="foot">記録はこの端末の中だけに保存されます。<br>' +
-      (store.available ? "" : "※ ブラウザの設定により保存できません。学習は続けられますが記録は残りません。") + '</p>';
+      (store.available ? "" : "※ ブラウザの設定により保存できません。学習は続けられますが記録は残りません。<br>") +
+      '<a href="/privacy.html">プライバシーポリシー</a></p>';
 
     el.screen.className = "screen";
     el.screen.innerHTML = html;
