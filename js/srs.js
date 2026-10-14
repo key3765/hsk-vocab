@@ -10,7 +10,7 @@ window.HSK = window.HSK || {};
   var store = ns.store;
 
   /* 箱 0..6 に対応する「次に出るまでの日数」 */
-  var INTERVALS = [1, 2, 4, 8, 16, 32, 60];
+  var INTERVALS = [1, 3, 7, 14, 30, 60, 120];
   var MAX_BOX = INTERVALS.length - 1;
 
   function intervalFor(box) {
